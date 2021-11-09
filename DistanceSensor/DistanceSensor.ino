@@ -1,22 +1,21 @@
 const int EchoPin = 13;
 const int TrigPin = 12;
-
+Servo servol;
 void setup()
 {
   pinMode(TrigPin, OUTPUT);
   pinMode(EchoPin, INPUT);
   Serial.begin(9600);  
-
+  servo1.attach(servoPin);
 }
 
 void loop()
 {
   float A = GiveDistance();
   Serial.println(A);
+  distansoMeter(A);
   delay(1000);
 }
-
-
 
 /* 
  *  This function returns the distance at the time when it is called.
@@ -42,4 +41,18 @@ float GiveDistance()
   delay(100); 
 
   return Distance;
+}
+
+/*
+ In this implementation if indicator shows  `0`, then the distance is a large number(or danger is `0`)
+ and if indicator shows a large angle then there is more danger, i.e distance is almost zero.
+*/
+
+void distansoMeter(float distance)
+{
+    float safeDistance = 10; // Distance is in SI Units
+    float angle = (safeDistance - distance)*120/safeDistance;
+    servol.write(angle);
+
+    delay(100);
 }
