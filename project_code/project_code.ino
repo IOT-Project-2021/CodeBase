@@ -11,7 +11,8 @@
 #define LED_RED_PIN 15
 #define LED_WHITE_PIN 2
 #define LED_GREEN_PIN 4
-
+const int EchoPin = 13;
+const int TrigPin = 12;
 #define POWER_PIN_RUNNING_MODE 36
 #define POWER_PIN_SECURITY_MODE 39
 
@@ -20,8 +21,7 @@ const char *password = "password"; // use network password
 WiFiServer server(80);
 
 Servo servol;
-const int EchoPin = 13;
-const int TrigPin = 12;
+
 float Distance;
 float safeDistance = 10; // Distance is in SI Units
 
@@ -138,6 +138,7 @@ void handle_network()
           security_mode = false;
           digitalWrite(POWER_PIN_RUNNING_MODE, HIGH);
           digitalWrite(POWER_PIN_SECURITY_MODE, LOW);
+          digitalWrtie(LED_GREEN_PIN, HIGH);
           Serial.println("Security mode Turned off");
         }
         if (currentLine.endsWith("GET /H"))
@@ -145,6 +146,7 @@ void handle_network()
           security_mode = true;
           digitalWrite(POWER_PIN_RUNNING_MODE, LOW);
           digitalWrite(POWER_PIN_SECURITY_MODE, HIGH);
+          digitalWrite(LED_GREEN_PIN, LOW);
           delay(3000);
           Serial.println("Security mode Turned on");
         }
@@ -241,12 +243,20 @@ void Distance_sensing()
 
     move_servo_dial(Distance);  //rotating servo motor
 
-    if(Distance < safeDistance)  //critical check
-     { 
-       tone(BUZZER_PIN, 2000);
-     }
+    if (Distance < safeDistance) //critical check
+    {
+      if (!red_led_on)
+      {
+        tone(BUZZER_PIN, 1000);
+        digitalWrite(LED_RED_PIN, HIGH);
+      }
+    }
     else
     {
-      noTone(BUZZER_PIN);
+      if (red_led_on)
+      {
+        noTone(BUZZER_PIN);
+        digitalWrite(LED_RED_PIN, LOW);
+      }
     }
 }
