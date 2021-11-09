@@ -1,7 +1,7 @@
 #include <ESP32Tone.h>
 #include <WiFi.h>
 #include <WiFiServer.h>
-#include <Servo.h>
+#include <ESP32Servo.h>
 
 
 #define LDR_SENSOR_PIN 26
@@ -54,8 +54,8 @@ void setup()
   //powerpins
   pinMode(POWER_PIN_RUNNING_MODE, OUTPUT);
   pinMode(POWER_PIN_SECURITY_MODE, OUTPUT);
-  digitalWrite(POWER_PIN_SECURITY_MODE, LOW));
-  digitalWrite(POWER_PIN_RUNNING_MODE, HIGHT);
+  digitalWrite(POWER_PIN_SECURITY_MODE, LOW);
+  digitalWrite(POWER_PIN_RUNNING_MODE, HIGH);
 
   Serial.begin(115200);
 
@@ -232,7 +232,7 @@ float GiveDistance()
 void move_servo_dial(float distance)
 {
    // angle = 0.45*distance  where distance is in cm
-   servol.write(0.45*distance);
+  servol.write((int)0.45*distance);
 }
 
 void Distance_sensing()
