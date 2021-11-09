@@ -3,57 +3,56 @@
 #include <WiFiServer.h>
 #include <Servo.h>
 
-const char* ssid = "WiFiname"; // use your wifi network name
-const char *password = "password"; // use network password
-WiFiServer server(80);
 
 #define LDR_SENSOR_PIN 26
 #define PIR_MOTION_SENSOR_PIN 27
-
 #define SERVO_PIN 32
 #define BUZZER_PIN 33
-
 #define LED_RED_PIN 15
 #define LED_WHITE_PIN 2
 #define LED_GREEN_PIN 4
+
+
+const char* ssid = "WiFiname"; // use your wifi network name
+const char *password = "password"; // use network password
+WiFiServer server(80);
 
 Servo servol;
 const int EchoPin = 13;
 const int TrigPin = 12;
 float Distance;
 float safeDistance = 10; // Distance is in SI Units
-bool white_led_on;
-bool red_led_on;
-bool green_led_on;
 
-int security_mode;
+int val = 0;
+
+bool white_led_on = false;
+bool red_led_on = false;
+bool green_led_on = false;
+bool security_mode = false;
 
 void setup()
 {
-
-  security_mode = 0; // security mode off
   // sensor pins setup
   pinMode(LDR_SENSOR_PIN, INPUT);
-
+  pinMode(TrigPin, OUTPUT);
+  pinMode(EchoPin, INPUT);
+  pinMode(BUZZER_PIN, OUTPUT);
+  servol.attach(SERVO_PIN);
+  servol.write(0);
+  pinMode(PIR_MOTION_SENSOR_PIN, INPUT);
+  
   // led pins
   pinMode(LED_WHITE_PIN, OUTPUT);
   pinMode(LED_RED_PIN, OUTPUT);
   pinMode(LED_GREEN_PIN, OUTPUT);
-  pinMode(TrigPin, OUTPUT);
-  pinMode(EchoPin, INPUT);
-  pinMode(BUZZER_PIN, OUTPUT);
 
   digitalWrite(LED_WHITE_PIN, LOW);
   digitalWrite(LED_RED_PIN, LOW);
   digitalWrite(LED_GREEN_PIN, LOW);
   digitalWrite(BUZZER_PIN, LOW);
 
-  white_led_on = false;
-  red_led_on = false;
-  green_led_on = false;
-
   Serial.begin(115200);
-  servol.attach(SERVO_PIN);
+
   // network part
   Serial.println("Network Name : ");
   Serial.println(ssid);
@@ -85,7 +84,7 @@ void loop()
   // main code part
   if(security_mode)
   {
-    // PIR_motion_sensing();
+    PIR_motion_sensing();
   }
   else  
   {
@@ -132,7 +131,7 @@ void handle_network()
           // digitalWrite(LED_PIN, LOW);
           // noTone(BUZZER_PIN);
           // Serial.println("Turned off");
-          security_mode = 0;
+          security_mode = false;
           Serial.println("Security mode Turned off");
         }
         if (currentLine.endsWith("GET /H"))
@@ -140,7 +139,7 @@ void handle_network()
           // digitalWrite(LED_PIN, HIGH);
           // tone(BUZZER_PIN, 600);
           // Serial.println("Turned on");
-          security_mode = 1;
+          security_mode = true;
           Serial.println("Security mode Turned on");
         }
       }
@@ -152,8 +151,32 @@ void handle_network()
 }
 void PIR_motion_sensing()
 {
-  
+  // Turns on leds when light intensity is low.
+  int pir_reading = digitalRead(PIR_MOTION_SENSOR_PIN);
+  Serial.print("PIR reading = ");
+  Serial.println(pir_reading);
+  if (pir_reading == HIGH)
+  {
+    if (!red_led_on)
+    {
+      digitalWrite(LED_RED_PIN, HIGH);
+      Serial.println("RED LED ON");
+      tone(BUZZER_PIN,1000);
+      red_led_on = true;
+    }
+  }
+  else
+  {
+    if (red_led_on)
+    {
+      digitalWrite(LED_RED_PIN, LOW);
+      Serial.println("RED LED OFF");
+      noTone(BUZZER_PIN);
+      red_led_on = false;
+    }
+  }
 }
+
 void LDR_sensing()
 {
   // Turns on leds when light intensity is low.
@@ -199,9 +222,10 @@ float GiveDistance()
   return Distance;
 }
 
-void move_servo_dial(float diatance)
+void move_servo_dial(float distance)
 {
-
+   // angle = 0.45*distance  where distance is in cm
+}
 
 void Distance_sensing()
 {
@@ -210,5 +234,11 @@ void Distance_sensing()
     move_servo_dial(Distance);  //rotating servo motor
 
     if(Distance < safeDistance)  //critical check
-      tone(BUZZER_PIN, 2000, 2000);
+     { 
+       tone(BUZZER_PIN, 2000);
+     }
+    else
+    {
+      noTone(BUZZER_PIN);
+    }
 }
