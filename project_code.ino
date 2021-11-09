@@ -12,6 +12,8 @@
 #define LED_WHITE_PIN 2
 #define LED_GREEN_PIN 4
 
+#define POWER_PIN_RUNNING_MODE 36
+#define POWER_PIN_SECURITY_MODE 39
 
 const char* ssid = "WiFiname"; // use your wifi network name
 const char *password = "password"; // use network password
@@ -23,7 +25,6 @@ const int TrigPin = 12;
 float Distance;
 float safeDistance = 10; // Distance is in SI Units
 
-int val = 0;
 
 bool white_led_on = false;
 bool red_led_on = false;
@@ -45,11 +46,16 @@ void setup()
   pinMode(LED_WHITE_PIN, OUTPUT);
   pinMode(LED_RED_PIN, OUTPUT);
   pinMode(LED_GREEN_PIN, OUTPUT);
-
   digitalWrite(LED_WHITE_PIN, LOW);
   digitalWrite(LED_RED_PIN, LOW);
   digitalWrite(LED_GREEN_PIN, LOW);
   digitalWrite(BUZZER_PIN, LOW);
+
+  //powerpins
+  pinMode(POWER_PIN_RUNNING_MODE, OUTPUT);
+  pinMode(POWER_PIN_SECURITY_MODE, OUTPUT);
+  digitalWrite(POWER_PIN_SECURITY_MODE, LOW));
+  digitalWrite(POWER_PIN_RUNNING_MODE, HIGHT);
 
   Serial.begin(115200);
 
@@ -96,7 +102,7 @@ void loop()
 
 void handle_network()
 {
-   WiFiClient client = server.available();
+  WiFiClient client = server.available();
 
   if (client) 
   {
@@ -112,7 +118,7 @@ void handle_network()
             client.println("HTTP/1.1 200 OK");
             client.println("content-type:text/html");
             client.println();
-            client.print("<h1> Turn LED and BUZZER on and off </h1>");
+            client.print("<h1> Security mode </h1>");
             client.print(" <span style=\"background-color: rgb(0, 255, 0)\; border-radius: 10px\;padding: 10px\;font-size: 30px\;\" ><a href=\"H\" style=\"text-decoration: none\;\"> ON</a> </span><br><br><br><br>");
             client.print(" <span style=\"background-color: rgb(255, 0, 0)\; border-radius: 10px\;padding: 10px\;font-size: 30px\;\" ><a href=\"L\" style=\"text-decoration: none\;\"> OFF </a> </span><br>");
             client.println();
@@ -127,19 +133,19 @@ void handle_network()
           currentLine += c;
         }
         
-        if (currentLine.endsWith("GET /L")) {
-          // digitalWrite(LED_PIN, LOW);
-          // noTone(BUZZER_PIN);
-          // Serial.println("Turned off");
+        if (currentLine.endsWith("GET /L"))
+        {
           security_mode = false;
+          digitalWrite(POWER_PIN_RUNNING_MODE, HIGH);
+          digitalWrite(POWER_PIN_SECURITY_MODE, LOW);
           Serial.println("Security mode Turned off");
         }
         if (currentLine.endsWith("GET /H"))
         {
-          // digitalWrite(LED_PIN, HIGH);
-          // tone(BUZZER_PIN, 600);
-          // Serial.println("Turned on");
           security_mode = true;
+          digitalWrite(POWER_PIN_RUNNING_MODE, LOW);
+          digitalWrite(POWER_PIN_SECURITY_MODE, HIGH);
+          delay(3000);
           Serial.println("Security mode Turned on");
         }
       }
@@ -149,6 +155,7 @@ void handle_network()
     Serial.println("");
   }
 }
+
 void PIR_motion_sensing()
 {
   // Turns on leds when light intensity is low.
@@ -225,6 +232,7 @@ float GiveDistance()
 void move_servo_dial(float distance)
 {
    // angle = 0.45*distance  where distance is in cm
+   servol.write(0.45*distance);
 }
 
 void Distance_sensing()
