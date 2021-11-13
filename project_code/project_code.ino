@@ -2,7 +2,10 @@
 #include <WiFi.h>
 #include <WiFiServer.h>
 #include <ESP32Servo.h>
+#include <ThingSpeak.h>
 
+#define CHANNEL_ID 1569817
+#define CHANNEL_API_KEY "4WT161MBJQZLIVWQ"
 
 #define LDR_SENSOR_PIN 26
 #define PIR_MOTION_SENSOR_PIN 27
@@ -11,10 +14,12 @@
 #define LED_RED_PIN 15
 #define LED_WHITE_PIN 2
 #define LED_GREEN_PIN 4
-
+  
 const char* ssid = "network name"; // use your wifi network name
 const char *password = "password"; // use network password
 WiFiServer server(80);
+
+WiFiClient client2;
 
 Servo servol;
 const int EchoPin = 13;
@@ -27,8 +32,13 @@ bool red_led_on = false;
 bool green_led_on = false;
 bool security_mode = false;
 
+
+float distance_to_thingspeak;
+int ldr_to_thingspeak;
+int pir_to_thingspeak;
+
 void setup()
-{ 
+{
   Serial.begin(115200);
   //   sensor pins setup
   pinMode(LDR_SENSOR_PIN, INPUT);
@@ -53,7 +63,7 @@ void setup()
 
   //powerpins
 
- 
+
 
   // network part
   Serial.println("Network Name : ");
@@ -76,6 +86,8 @@ void setup()
   Serial.print("Wifi status = ");
   Serial.println(WiFi.status());
 
+  ThingSpeak.begin(client2);
+
 }
 
 void loop()
@@ -87,13 +99,19 @@ void loop()
   if (security_mode)
   {
     PIR_motion_sensing();
+     ThingSpeak.setField(3, pir_to_thingspeak);
+     ThingSpeak.writeFields(CHANNEL_ID, CHANNEL_API_KEY);
   }
   else
   {
     Distance_sensing();
     LDR_sensing();
+
+     ThingSpeak.setField(1, distance_to_thingspeak);
+     ThingSpeak.setField(2, ldr_to_thingspeak);
+     ThingSpeak.writeFields(CHANNEL_ID, CHANNEL_API_KEY);
   }
-  Serial.println();
+//  Serial.println("sent data to thingspeak "); // only data every 15sec intervel is saved to thins speak
   delay(1000);
 
 }
@@ -162,6 +180,7 @@ void PIR_motion_sensing()
 {
   // Turns on leds when light intensity is low.
   int pir_reading = digitalRead(PIR_MOTION_SENSOR_PIN);
+  pir_to_thingspeak=pir_reading;
   Serial.print("PIR reading = ");
   Serial.println(pir_reading);
   if (pir_reading == HIGH)
@@ -190,6 +209,7 @@ void LDR_sensing()
 {
   // Turns on leds when light intensity is low.
   int ldr_reading = digitalRead(LDR_SENSOR_PIN);
+  ldr_to_thingspeak=ldr_reading;
   Serial.print("LDR reading = ");
   Serial.println(ldr_reading);
   if ( ldr_reading == HIGH)
@@ -249,7 +269,7 @@ void move_servo_dial(float distance)
 void Distance_sensing()
 {
   float Distance = Get_Distance();
-
+  distance_to_thingspeak = Distance;
   move_servo_dial(Distance);  //rotating servo motor
 
   if (Distance < safeDistance) //critical check
