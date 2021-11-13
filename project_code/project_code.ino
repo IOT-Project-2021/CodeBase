@@ -11,20 +11,16 @@
 #define LED_RED_PIN 15
 #define LED_WHITE_PIN 2
 #define LED_GREEN_PIN 4
-const int EchoPin = 13;
-const int TrigPin = 12;
-#define POWER_PIN_RUNNING_MODE 36
-#define POWER_PIN_SECURITY_MODE 39
 
-const char* ssid = "WiFiname"; // use your wifi network name
+const char* ssid = "network name"; // use your wifi network name
 const char *password = "password"; // use network password
 WiFiServer server(80);
 
 Servo servol;
+const int EchoPin = 13;
+const int TrigPin = 12;
 
-float Distance;
-float safeDistance = 10; // Distance is in SI Units
-
+float safeDistance = 100; // Distance is in SI Units
 
 bool white_led_on = false;
 bool red_led_on = false;
@@ -32,32 +28,32 @@ bool green_led_on = false;
 bool security_mode = false;
 
 void setup()
-{
-  // sensor pins setup
+{ 
+  Serial.begin(115200);
+  //   sensor pins setup
   pinMode(LDR_SENSOR_PIN, INPUT);
   pinMode(TrigPin, OUTPUT);
   pinMode(EchoPin, INPUT);
   pinMode(BUZZER_PIN, OUTPUT);
   servol.attach(SERVO_PIN);
+  Serial.print("Servo angle = ");
+  Serial.println(servol.read());
   servol.write(0);
+  delay(100);
   pinMode(PIR_MOTION_SENSOR_PIN, INPUT);
-  
+
   // led pins
   pinMode(LED_WHITE_PIN, OUTPUT);
   pinMode(LED_RED_PIN, OUTPUT);
   pinMode(LED_GREEN_PIN, OUTPUT);
   digitalWrite(LED_WHITE_PIN, LOW);
   digitalWrite(LED_RED_PIN, LOW);
-  digitalWrite(LED_GREEN_PIN, LOW);
+  digitalWrite(LED_GREEN_PIN, HIGH);
   digitalWrite(BUZZER_PIN, LOW);
 
   //powerpins
-  pinMode(POWER_PIN_RUNNING_MODE, OUTPUT);
-  pinMode(POWER_PIN_SECURITY_MODE, OUTPUT);
-  digitalWrite(POWER_PIN_SECURITY_MODE, LOW);
-  digitalWrite(POWER_PIN_RUNNING_MODE, HIGH);
 
-  Serial.begin(115200);
+ 
 
   // network part
   Serial.println("Network Name : ");
@@ -79,7 +75,7 @@ void setup()
   Serial.println("Server started!!!");
   Serial.print("Wifi status = ");
   Serial.println(WiFi.status());
-  
+
 }
 
 void loop()
@@ -88,23 +84,25 @@ void loop()
   handle_network();
 
   // main code part
-  if(security_mode)
+  if (security_mode)
   {
     PIR_motion_sensing();
   }
-  else  
+  else
   {
     Distance_sensing();
     LDR_sensing();
   }
-  delay(500);
+  Serial.println();
+  delay(1000);
+
 }
 
 void handle_network()
 {
   WiFiClient client = server.available();
 
-  if (client) 
+  if (client)
   {
     String currentLine = "";
     while (client.connected()) {
@@ -132,22 +130,24 @@ void handle_network()
         else if (c != '\r') {
           currentLine += c;
         }
-        
+
         if (currentLine.endsWith("GET /L"))
         {
           security_mode = false;
-          digitalWrite(POWER_PIN_RUNNING_MODE, HIGH);
-          digitalWrite(POWER_PIN_SECURITY_MODE, LOW);
-          digitalWrtie(LED_GREEN_PIN, HIGH);
+          digitalWrite(LED_RED_PIN, LOW);
+          digitalWrite(LED_WHITE_PIN, LOW);
+          digitalWrite(LED_GREEN_PIN, HIGH);
+          noTone(BUZZER_PIN);
           Serial.println("Security mode Turned off");
         }
-        if (currentLine.endsWith("GET /H"))
+        else if (currentLine.endsWith("GET /H"))
         {
           security_mode = true;
-          digitalWrite(POWER_PIN_RUNNING_MODE, LOW);
-          digitalWrite(POWER_PIN_SECURITY_MODE, HIGH);
+          digitalWrite(LED_RED_PIN, LOW);
+          digitalWrite(LED_WHITE_PIN, LOW);
           digitalWrite(LED_GREEN_PIN, LOW);
-          delay(3000);
+          noTone(BUZZER_PIN);
+          delay(5000);
           Serial.println("Security mode Turned on");
         }
       }
@@ -170,7 +170,7 @@ void PIR_motion_sensing()
     {
       digitalWrite(LED_RED_PIN, HIGH);
       Serial.println("RED LED ON");
-      tone(BUZZER_PIN,1000);
+      tone(BUZZER_PIN, 1000);
       red_led_on = true;
     }
   }
@@ -213,50 +213,58 @@ void LDR_sensing()
 
 }
 
-float GiveDistance()
+float Get_Distance()
 {
-  float Duration, Distance;
-  
-  digitalWrite(TrigPin, LOW);
-  delayMicroseconds(2);
-  
   digitalWrite(TrigPin, HIGH);
   delayMicroseconds(10);
   digitalWrite(TrigPin, LOW);
 
-  Duration = pulseIn(EchoPin, HIGH);
-  Distance = (Duration*.0343)/2;
-  delay(100);
+  float time_lapse = pulseIn(EchoPin, HIGH);
+  float distance = 0.017 * time_lapse;
 
-  return Distance;
+  Serial.print("distance =  ");
+  Serial.print(distance);
+  Serial.print(" cm (");
+
+  float distance_inches = distance * 0.393701;
+
+  Serial.print(distance_inches);
+  Serial.println(" inches )");
+  return distance;
 }
 
 void move_servo_dial(float distance)
 {
-   // angle = 0.45*distance  where distance is in cm
-  servol.write((int)0.45*distance);
+  // angle = 0.45*distance  where distance is in cm
+  float angle = distance * 0.45;
+  servol.write(angle);
+  delay(100);
+  Serial.print("Distance reading = ");
+  Serial.print(distance);
+  Serial.print("  angle = ");
+  Serial.println(angle);
+
 }
 
 void Distance_sensing()
 {
-    float Distance = GiveDistance();
+  float Distance = Get_Distance();
 
-    move_servo_dial(Distance);  //rotating servo motor
+  move_servo_dial(Distance);  //rotating servo motor
 
-    if (Distance < safeDistance) //critical check
-    {
-      if (!red_led_on)
-      {
-        tone(BUZZER_PIN, 1000);
-        digitalWrite(LED_RED_PIN, HIGH);
-      }
-    }
-    else
-    {
-      if (red_led_on)
-      {
-        noTone(BUZZER_PIN);
-        digitalWrite(LED_RED_PIN, LOW);
-      }
-    }
+  if (Distance < safeDistance) //critical check
+  {
+    digitalWrite(LED_RED_PIN, HIGH);
+    Serial.println("RED LED ON");
+    tone(BUZZER_PIN, 1000);
+    red_led_on = true;
+
+  }
+  else
+  {
+    digitalWrite(LED_RED_PIN, LOW);
+    Serial.println("RED LED OFF");
+    noTone(BUZZER_PIN);
+    red_led_on = false;
+  }
 }
