@@ -29,7 +29,7 @@ def get_data_from_onem2m(ae, node_number):
     y = []
     if result["m2m:cnt"].get("m2m:cin") is not None:
         x = [i["ct"] for i in result["m2m:cnt"]["m2m:cin"]]
-        y = [i["con"] for i in result["m2m:cnt"]["m2m:cin"]]
+        y = [float(i["con"]) for i in result["m2m:cnt"]["m2m:cin"]]
     return x, y
 
 def plot_data(x, y, ae, n):
