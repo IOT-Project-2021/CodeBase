@@ -18,6 +18,11 @@ const int TrigPin = 12;
 
 const char* ssid = "Galaxy M21142D"; // use your wifi network name
 const char *password = "idtg3709"; // use network password
+String cnt = "node1"; // container i.e., "node" + node_number
+String cse_ip = "127.0.0.1"; // YOUR IP from ipconfig/ifconfig
+String cse_port = "8080";
+String onem2m_server = "http://" + cse_ip + ":" + cse_port + "/~/in-cse/in-name/";
+
 WiFiServer server(80);
 
 Servo servol;
@@ -51,11 +56,6 @@ void setup()
   digitalWrite(LED_GREEN_PIN, HIGH);
   digitalWrite(BUZZER_PIN, LOW);
 
-  //powerpins
-  pinMode(POWER_PIN_RUNNING_MODE, OUTPUT);
-  pinMode(POWER_PIN_SECURITY_MODE, OUTPUT);
-  digitalWrite(POWER_PIN_SECURITY_MODE, LOW);
-  digitalWrite(POWER_PIN_RUNNING_MODE, HIGH);
 
   Serial.begin(9600);
 
@@ -91,11 +91,14 @@ void loop()
   if(security_mode)
   {
    PIR_motion_sensing();
+   createCI("PIR_motion_sensor", pir_to_onem2m);
   }
   else  
   {
     Distance_sensing();
     LDR_sensing();
+    createCI("LDR_sensor", ldr_to_onem2m);
+    createCI("Ultrasonic_Distance_sensor", distance_to_onem2m);
   }
   delay(500);
 }
@@ -162,6 +165,7 @@ void PIR_motion_sensing()
 {
   // Turns on leds when light intensity is low.
   int pir_reading = digitalRead(PIR_MOTION_SENSOR_PIN);
+  pir_to_onem2m=pir_reading;
   Serial.print("PIR reading = ");
   Serial.println(pir_reading);
   if (pir_reading == HIGH)
@@ -190,6 +194,7 @@ void LDR_sensing()
 {
   // Turns on leds when light intensity is low.
   int ldr_reading = digitalRead(LDR_SENSOR_PIN);
+  ldr_to_onem2m=ldr_reading;
   Serial.print("LDR reading = ");
   Serial.println(ldr_reading);
   if ( ldr_reading == HIGH)
@@ -262,4 +267,21 @@ void Distance_sensing()
         red_led_on = false;
       }
     }
+}
+
+void createCI(String ae, float val) 
+{
+  // creates a client instance
+  HTTPClient http;
+  http.begin(onem2m_server + ae + "/" + cnt + "/");
+
+  http.addHeader("X-M2M-Origin", "admin:admin");
+  http.addHeader("Content-Type", "application/json;ty=4");
+
+  int code = http.POST("{\"m2m:cin\": {\"cnf\":\"application/json\",\"con\": " + String(val) + "}}");
+
+  Serial.println(code);
+  if (code == -1) 
+    Serial.println("UNABLE TO CONNECT TO THE SERVER");
+  http.end();
 }
