@@ -2,56 +2,46 @@
 #include <WiFi.h>
 #include <WiFiServer.h>
 #include <ESP32Servo.h>
-#include <ThingSpeak.h>
 
-#define CHANNEL_ID 1569817
-#define CHANNEL_API_KEY "4WT161MBJQZLIVWQ"
 
 #define LDR_SENSOR_PIN 26
 #define PIR_MOTION_SENSOR_PIN 27
-#define SERVO_PIN 32
+#define SERVO_PIN 5
 #define BUZZER_PIN 33
 #define LED_RED_PIN 15
 #define LED_WHITE_PIN 2
 #define LED_GREEN_PIN 4
-  
-const char* ssid = "network name"; // use your wifi network name
-const char *password = "password"; // use network password
-WiFiServer server(80);
-
-WiFiClient client2;
-
-Servo servol;
 const int EchoPin = 13;
 const int TrigPin = 12;
+#define POWER_PIN_RUNNING_MODE 34
+#define POWER_PIN_SECURITY_MODE 35
 
-float safeDistance = 100; // Distance is in SI Units
+const char* ssid = "Galaxy M21142D"; // use your wifi network name
+const char *password = "idtg3709"; // use network password
+WiFiServer server(80);
+
+Servo servol;
+
+float Distance;
+float safeDistance = 10; // Distance is in SI Units
+
 
 bool white_led_on = false;
 bool red_led_on = false;
 bool green_led_on = false;
 bool security_mode = false;
 
-
-float distance_to_thingspeak;
-int ldr_to_thingspeak;
-int pir_to_thingspeak;
-
 void setup()
 {
-  Serial.begin(115200);
-  //   sensor pins setup
+  // sensor pins setup
   pinMode(LDR_SENSOR_PIN, INPUT);
   pinMode(TrigPin, OUTPUT);
   pinMode(EchoPin, INPUT);
   pinMode(BUZZER_PIN, OUTPUT);
   servol.attach(SERVO_PIN);
-  Serial.print("Servo angle = ");
-  Serial.println(servol.read());
   servol.write(0);
-  delay(100);
   pinMode(PIR_MOTION_SENSOR_PIN, INPUT);
-
+  
   // led pins
   pinMode(LED_WHITE_PIN, OUTPUT);
   pinMode(LED_RED_PIN, OUTPUT);
@@ -62,8 +52,12 @@ void setup()
   digitalWrite(BUZZER_PIN, LOW);
 
   //powerpins
+  pinMode(POWER_PIN_RUNNING_MODE, OUTPUT);
+  pinMode(POWER_PIN_SECURITY_MODE, OUTPUT);
+  digitalWrite(POWER_PIN_SECURITY_MODE, LOW);
+  digitalWrite(POWER_PIN_RUNNING_MODE, HIGH);
 
-
+  Serial.begin(9600);
 
   // network part
   Serial.println("Network Name : ");
@@ -85,9 +79,7 @@ void setup()
   Serial.println("Server started!!!");
   Serial.print("Wifi status = ");
   Serial.println(WiFi.status());
-
-  ThingSpeak.begin(client2);
-
+  
 }
 
 void loop()
@@ -96,31 +88,23 @@ void loop()
   handle_network();
 
   // main code part
-  if (security_mode)
+  if(security_mode)
   {
-    PIR_motion_sensing();
-     ThingSpeak.setField(3, pir_to_thingspeak);
-     ThingSpeak.writeFields(CHANNEL_ID, CHANNEL_API_KEY);
+   PIR_motion_sensing();
   }
-  else
+  else  
   {
     Distance_sensing();
     LDR_sensing();
-
-     ThingSpeak.setField(1, distance_to_thingspeak);
-     ThingSpeak.setField(2, ldr_to_thingspeak);
-     ThingSpeak.writeFields(CHANNEL_ID, CHANNEL_API_KEY);
   }
-//  Serial.println("sent data to thingspeak "); // only data every 15sec intervel is saved to thins speak
-  delay(1000);
-
+  delay(500);
 }
 
 void handle_network()
 {
   WiFiClient client = server.available();
 
-  if (client)
+  if (client) 
   {
     String currentLine = "";
     while (client.connected()) {
@@ -148,24 +132,22 @@ void handle_network()
         else if (c != '\r') {
           currentLine += c;
         }
-
+        
         if (currentLine.endsWith("GET /L"))
         {
           security_mode = false;
-          digitalWrite(LED_RED_PIN, LOW);
-          digitalWrite(LED_WHITE_PIN, LOW);
+          digitalWrite(POWER_PIN_RUNNING_MODE, HIGH);
+          digitalWrite(POWER_PIN_SECURITY_MODE, LOW);
           digitalWrite(LED_GREEN_PIN, HIGH);
-          noTone(BUZZER_PIN);
           Serial.println("Security mode Turned off");
         }
-        else if (currentLine.endsWith("GET /H"))
+        if (currentLine.endsWith("GET /H"))
         {
           security_mode = true;
-          digitalWrite(LED_RED_PIN, LOW);
-          digitalWrite(LED_WHITE_PIN, LOW);
+          digitalWrite(POWER_PIN_RUNNING_MODE, LOW);
+          digitalWrite(POWER_PIN_SECURITY_MODE, HIGH);
           digitalWrite(LED_GREEN_PIN, LOW);
-          noTone(BUZZER_PIN);
-          delay(5000);
+          delay(100);
           Serial.println("Security mode Turned on");
         }
       }
@@ -180,7 +162,6 @@ void PIR_motion_sensing()
 {
   // Turns on leds when light intensity is low.
   int pir_reading = digitalRead(PIR_MOTION_SENSOR_PIN);
-  pir_to_thingspeak=pir_reading;
   Serial.print("PIR reading = ");
   Serial.println(pir_reading);
   if (pir_reading == HIGH)
@@ -189,7 +170,7 @@ void PIR_motion_sensing()
     {
       digitalWrite(LED_RED_PIN, HIGH);
       Serial.println("RED LED ON");
-      tone(BUZZER_PIN, 1000);
+      tone(BUZZER_PIN,1000);
       red_led_on = true;
     }
   }
@@ -209,7 +190,6 @@ void LDR_sensing()
 {
   // Turns on leds when light intensity is low.
   int ldr_reading = digitalRead(LDR_SENSOR_PIN);
-  ldr_to_thingspeak=ldr_reading;
   Serial.print("LDR reading = ");
   Serial.println(ldr_reading);
   if ( ldr_reading == HIGH)
@@ -233,58 +213,53 @@ void LDR_sensing()
 
 }
 
-float Get_Distance()
+float GiveDistance()
 {
+  float Duration, Distance;
+  
+  digitalWrite(TrigPin, LOW);
+  delayMicroseconds(2);
+  
   digitalWrite(TrigPin, HIGH);
   delayMicroseconds(10);
   digitalWrite(TrigPin, LOW);
 
-  float time_lapse = pulseIn(EchoPin, HIGH);
-  float distance = 0.017 * time_lapse;
+  Duration = pulseIn(EchoPin, HIGH);
+  Distance = (Duration*.0343)/2;
+  delay(100);
 
-  Serial.print("distance =  ");
-  Serial.print(distance);
-  Serial.print(" cm (");
-
-  float distance_inches = distance * 0.393701;
-
-  Serial.print(distance_inches);
-  Serial.println(" inches )");
-  return distance;
+  return Distance;
 }
 
 void move_servo_dial(float distance)
 {
-  // angle = 0.45*distance  where distance is in cm
-  float angle = distance * 0.45;
-  servol.write(angle);
-  delay(100);
-  Serial.print("Distance reading = ");
-  Serial.print(distance);
-  Serial.print("  angle = ");
-  Serial.println(angle);
-
+   // angle = 0.45*distance  where distance is in cm
+  servol.write(0.45*distance);
+  Serial.print(0.45*distance);
 }
 
 void Distance_sensing()
 {
-  float Distance = Get_Distance();
-  distance_to_thingspeak = Distance;
-  move_servo_dial(Distance);  //rotating servo motor
+    float Distance = GiveDistance();
+    Serial.println(Distance);
+    move_servo_dial(Distance);  //rotating servo motor
 
-  if (Distance < safeDistance) //critical check
-  {
-    digitalWrite(LED_RED_PIN, HIGH);
-    Serial.println("RED LED ON");
-    tone(BUZZER_PIN, 1000);
-    red_led_on = true;
-
-  }
-  else
-  {
-    digitalWrite(LED_RED_PIN, LOW);
-    Serial.println("RED LED OFF");
-    noTone(BUZZER_PIN);
-    red_led_on = false;
-  }
+    if (Distance < safeDistance) //critical check
+    {
+      if (!red_led_on)
+      {
+        tone(BUZZER_PIN, 1000);
+        digitalWrite(LED_RED_PIN, HIGH);
+        red_led_on = true;
+      }
+    }
+    else
+    {
+      if (red_led_on)
+      {
+        noTone(BUZZER_PIN);
+        digitalWrite(LED_RED_PIN, LOW);
+        red_led_on = false;
+      }
+    }
 }
