@@ -1,6 +1,7 @@
 import sys
 import json
 import hashlib
+from OM2Mhigh import Create_New_Node
 
 def Hash(Name, Contacts):
   str2hash = Name + "".join(Contacts)
@@ -28,6 +29,7 @@ Data_json = json.load(Data)
 Data.close()
 
 Data_json[New_hash] = New_reg
+Create_New_Node(New_hash)
 
 Data = open("/home/balaramakrishna/Documents/2.1/IOT/Project/CodeBase/PythonScripts/Data.json", "w")
 json.dump(Data_json, Data, indent=4)
