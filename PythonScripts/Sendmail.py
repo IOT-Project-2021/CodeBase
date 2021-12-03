@@ -27,5 +27,7 @@ def Send_Mail(TO, html):
     send_mail(Mail)
 
 
-#inlcude hospital mail
-#interface to accecpt location not body.
+def Notify(Name, Contacts):
+    MailContent = Name + " " + "Had an accident"
+    for address in Contacts:
+        Send_Mail(address, MailContent)
