@@ -14,7 +14,6 @@ uri_cse = "http://127.0.0.1:8080/~/in-cse/in-name"
 
 
 
-DataFile = open("Data.json")
 Active_users = set()
 Accident_users = set()
 Data_users = {}
@@ -24,10 +23,13 @@ Sync = threading.Lock()
 # Users who have accident and have been updated are to chagned to OM2M
 # Deletion of users accident is not implemented.
 def JsonUpdate():
+  global Data_users, Active_users, Accident_users, Sync
   while(1):
     input()
     Sync.acquire()
+    DataFile = open("/home/balaramakrishna/Documents/2.1/IOT/Project/CodeBase/PythonScripts/Data.json", "r")
     Data_users = json.load(DataFile)
+    DataFile.close()
 
     #Unregistered users
     Unregistered = set()
@@ -40,6 +42,11 @@ def JsonUpdate():
     for user in Unregistered:
       Delete_Node(user)
 
+    #Newly registered
+    for user in Data_users:
+      if not( (user in Accident_users) or (user in Active_users) ):
+        Active_users.add(user)
+    
     #transacktion
     Discard = set()
     for user in Accident_users:
@@ -51,11 +58,14 @@ def JsonUpdate():
     for user in Discard:
       Data_users[user]["Modified"] = False
 
-    json.dump(DataFile, indent=4)
+    DataFile = open("/home/balaramakrishna/Documents/2.1/IOT/Project/CodeBase/PythonScripts/Data.json", "w")
+    json.dump(Data_users, DataFile, indent=4)
+    DataFile.close()
     Sync.release()
 
 
 def Alerting():
+  global Data_users, Active_users, Accident_users, Sync
   while(1):
     Sync.acquire()
     sleep(1)
@@ -68,7 +78,7 @@ def Alerting():
 
 
 def Accident_happend(user):
-  Distance_Data = get_data_from_onem2m(uds, user)
+  Time, Distance_Data = get_data_from_onem2m(uds, user)
   for instance in Distance_Data:
     if instance <= 3:
       return True
