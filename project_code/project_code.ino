@@ -2,6 +2,7 @@
 #include <WiFi.h>
 #include <WiFiServer.h>
 #include <ESP32Servo.h>
+#include <HTTPClient.h>
 
 
 #define LDR_SENSOR_PIN 26
@@ -22,6 +23,7 @@ String cnt = "node1"; // container i.e., "node" + node_number
 String cse_ip = "127.0.0.1"; // YOUR IP from ipconfig/ifconfig
 String cse_port = "8080";
 String onem2m_server = "http://" + cse_ip + ":" + cse_port + "/~/in-cse/in-name/";
+float pir_to_onem2m, ldr_to_onem2m, distance_to_onem2m;
 
 WiFiServer server(80);
 
