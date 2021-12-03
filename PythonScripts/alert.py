@@ -1,13 +1,16 @@
 import threading
 import json
 from time import sleep
-from Sendmail import Notify
-from analyse import get_recent_data
 from itertools import chain
+
+from OM2Mhigh import * 
+from Sendmail import Notify
+
 
 uds = "Ultrasonic_Distance_sensor"
 pir = "PIR_motion_sensor"
 ldr = "LDR_sensor"
+uri_cse = "http://127.0.0.1:8080/~/in-cse/in-name"
 
 
 
@@ -16,10 +19,6 @@ Active_users = set()
 Accident_users = set()
 Data_users = {}
 Sync = threading.Lock()
-
-def DeleteUser(a):
-  pass
-
 
 # Uregister users to be removed form the system OM2M and code data.
 # Users who have accident and have been updated are to chagned to OM2M
@@ -39,7 +38,7 @@ def JsonUpdate():
     Active_users = Active_users.difference(Unregistered)    
     Accident_users = Accident_users.difference(Unregistered)    
     for user in Unregistered:
-      DeleteUser(user)
+      Delete_Node(user)
 
     #transacktion
     Discard = set()
@@ -69,7 +68,7 @@ def Alerting():
 
 
 def Accident_happend(user):
-  Distance_Data = get_recent_data(uds, user)
+  Distance_Data = get_data_from_onem2m(uds, user)
   for instance in Distance_Data:
     if instance <= 3:
       return True

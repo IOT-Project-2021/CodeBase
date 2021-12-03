@@ -19,7 +19,7 @@ const int TrigPin = 12;
 
 const char* ssid = "Galaxy M21142D"; // use your wifi network name
 const char *password = "idtg3709"; // use network password
-String cnt = "node1"; // container i.e., "node" + node_number
+String cnt = "node1"; // container i.e., "node" + node_number ass given by registration process.
 String cse_ip = "127.0.0.1"; // YOUR IP from ipconfig/ifconfig
 String cse_port = "8080";
 String onem2m_server = "http://" + cse_ip + ":" + cse_port + "/~/in-cse/in-name/";
